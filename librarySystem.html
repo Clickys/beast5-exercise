@@ -1,0 +1,155 @@
+<script src="tinytest.js"></script>
+<script>
+    // Main Objective
+        // Create a librarySystem that depedencies and libraries can be created out of order
+
+    // Prototype function 
+        // (function(){
+        //     const libraryStorage = {}
+
+        //     function librarySystem(libraryName, array, callback) {
+        //         if (arguments.length > 1) {
+        //             if (array.length > 0) {
+        //                 let libraryDepedencies = array.map(function(arg) {
+        //                     return libraryStorage[arg];
+        //                 })
+        //                 libraryStorage[libraryName] = callback.apply(null, libraryDepedencies);
+        //             } else {
+        //                 libraryStorage[libraryName] = callback();
+        //             }
+        //         } else {
+        //             return libraryStorage[libraryName];
+        //         }
+
+        //     }
+        //     window.librarySystem = librarySystem;
+
+        // })()
+
+    // Function signature 
+        // librarySystem(libraryName, [,depedencies], callback(depedencies));
+
+    // Function Parameters 
+        // libraryName -> Library Name String
+        // [, depedencies] -> Optional array to include library depedencies
+        // callback -> A callback function which should return the library with/without its depedencies.
+
+    // Return value 
+        // It should return a library with or without its depedencies.
+
+    // Requirements 
+    // 1. It should accept a libraryName, optional array and a callback function and return the library created. 
+    // 2. It should check if the second argument is an array.
+    // 3. If array is empty it should return the library without depedencies.
+    // 4. If array is not empty it should return the library with depedencies.
+    // 5. If a library declared before its depedencies declartion it should retreive it with its depedencies and not undefined.
+    // 6. It should accept more than one dependencies.
+    // 7. It should retreive a library with its dependencies with random order.
+    // 8. It should run the callback function only once.
+
+    (function() {
+        const libraryStorage = {};
+        const dependenciesStorage = {};
+        
+        function librarySystem(libraryName, array, callback) {
+            if (arguments.length > 1) { // Declare a library
+                if (Array.isArray(array)) {
+                    if (array.length > 0) { // Declare a library with dependency
+                        dependenciesStorage[libraryName] = array;
+                        libraryStorage[libraryName] = callback;
+                    } else {    // Declare a library without dependency
+                        libraryStorage[libraryName] = callback();
+                    }
+                } else {
+
+                    throw new TypeError('data type not valid provide an array.');
+                }
+            } else {    // Retreive a library
+                if (typeof libraryStorage[libraryName] === 'function') {
+                    return libraryStorage[libraryName] = libraryStorage[libraryName].apply(this, dependenciesStorage[libraryName].map((lib) => { return libraryStorage[lib]}));
+                }
+                return libraryStorage[libraryName];
+            }
+        }
+
+        window.librarySystem = librarySystem;
+    })()
+
+
+    tests({
+        '1. It should accept a library name an empty array and a callback function and return the library created.': function () {
+            librarySystem('lib1', [], function() {
+                return 'lib1';
+            })
+            eq(librarySystem('lib1'), 'lib1');
+        },
+
+        '2. It should check if the second argument is an array.': function () {
+            try {
+                librarySystem('lib2', 'string', function() {
+                    return 'lib2';
+                 })
+            } catch(e) {
+                eq(e instanceof TypeError, true);
+                eq(e.message, 'data type not valid provide an array.')
+            }
+        },
+
+        '3. If array is empty it should return the library without depedencies.': function () {
+            librarySystem('lib3', [], function() {
+                return 'lib3';
+            })
+            eq(librarySystem('lib3'), 'lib3');
+        },
+
+        '4. If array is not empty it should return the library with depedencies.': function () {
+            librarySystem('dependency1', [], function() {
+                return 'dependency1 loaded';
+            })
+
+            librarySystem('lib4', ['dependency1'], function(dependency) {
+                return 'lib4 ' + dependency;
+            })
+
+            eq(librarySystem('lib4'), 'lib4 dependency1 loaded');
+        },
+
+        '5. It should retreive the library even if its declare before its dependency its declared.': function () {
+            librarySystem('lib5', ['dependency2'], function(dependency) {
+                return 'lib5 ' + dependency;
+            })
+            librarySystem('dependency2', [], function() {
+                return 'dependency2 loaded';
+            })
+            eq(librarySystem('lib5'), 'lib5 dependency2 loaded');
+        },
+
+        '6. It should accept more than one dependencies.': function () {
+            librarySystem('lib6', ['dependency2', 'dependency1', 'depedency3'], function(dep1, dep2, dep3) {
+                return 'lib6 ' + dep1 + ' ' + dep2 + ' ' + dep3;
+            })
+
+            librarySystem('depedency3', [], function() {
+                return 'dependency3 loaded';
+            })
+
+            eq(librarySystem('lib6'), 'lib6 dependency2 loaded dependency1 loaded dependency3 loaded');
+        },
+
+        '8. It should run the callback function only once.': function () {
+            let callbackFnHasRun = 0;
+            librarySystem('lib7', [], function() {
+                callbackFnHasRun++;
+                return 'lib7';
+            })
+            librarySystem('lib7');
+            librarySystem('lib7');
+            librarySystem('lib7');
+            librarySystem('lib7');
+            librarySystem('lib7');
+
+            eq(callbackFnHasRun, 1);
+        },
+
+    }, '5. Creating libraries out of order');
+</script>
